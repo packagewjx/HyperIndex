@@ -20,9 +20,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class HyperIndexMapper extends Mapper<Object, BSONObject, Text, MapWritable> {
+    private static Logger logger = Logger.getLogger("stdout");
     private static MongoClient mongoClient;
     private static MongoDatabase guangmingNewsDB;
     private static MongoCollection<Document> urlCollection;
@@ -55,18 +58,8 @@ public class HyperIndexMapper extends Mapper<Object, BSONObject, Text, MapWritab
         sb.append(doc.select("title").text()).append(' ');
         // 正文
         sb.append(doc.select("p").text()).append(' ');
-        // 关键字
-        Elements elements = doc.select("meta[name=keywords]");
-        if (elements.size() > 0) {
-            sb.append(elements.get(0).attr("content")).append(' ');
-        }
-        // 描述
-        elements = doc.select("meta[name=description]");
-        if (elements.size() > 0) {
-            sb.append(elements.get(0).attr("content")).append(' ');
-        }
         // 作者
-        elements = doc.select("meta[name=author]");
+        Elements elements = doc.select("meta[name=author]");
         if (elements.size() > 0) {
             sb.append(elements.get(0).attr("content")).append(' ');
         }
@@ -90,14 +83,19 @@ public class HyperIndexMapper extends Mapper<Object, BSONObject, Text, MapWritab
 
     @Override
     protected void map(Object key, BSONObject value, Context context) throws IOException, InterruptedException {
+        String articleUrl = ((String) value.get("article_url"));
+        logger.log(Level.INFO, String.format("Mapping URL: %s", articleUrl));
         Document document = new Document();
-        document.append("article_url", value.get("article_url"));
+        document.append("article_url", articleUrl);
+        logger.log(Level.INFO, String.format("Inserting URL %s into url collection", articleUrl));
         urlCollection.insertOne(document);
         ObjectId urlId = document.getObjectId("_id");
+        logger.log(Level.INFO, String.format("Inserted URL %s into url collection, get _id: %s", articleUrl, urlId.toHexString()));
 
         String html = (String) value.get("article_body_text");
         String useful = extractUsefulText(html);
         List<String> words = segmentAndFilter(useful);
+        logger.log(Level.INFO, String.format("Extracted %d words from %s", words.size(), articleUrl));
 
         words.forEach(word -> {
             Text wordText = new Text(word);
@@ -109,5 +107,6 @@ public class HyperIndexMapper extends Mapper<Object, BSONObject, Text, MapWritab
                 e.printStackTrace();
             }
         });
+        logger.info(String.format("Map URL %s complete", articleUrl));
     }
 }

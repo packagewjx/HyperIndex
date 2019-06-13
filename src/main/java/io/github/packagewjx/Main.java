@@ -1,14 +1,14 @@
 package io.github.packagewjx;
 
 import com.mongodb.hadoop.MongoInputFormat;
+import com.mongodb.hadoop.MongoOutputFormat;
 import com.mongodb.hadoop.splitter.StandaloneMongoSplitter;
 import com.mongodb.hadoop.util.MongoConfigUtil;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.bson.Document;
 
 import java.io.InputStream;
 import java.util.Properties;
@@ -26,10 +26,9 @@ public class Main {
         fin.close();
 
         Configuration conf = new Configuration();
-        // 使用测试的数据库gmw
         MongoConfigUtil.setInputURI(conf, "mongodb://" + mongoHost + "/guangmingNews.gmw");
         MongoConfigUtil.setSplitterClass(conf, StandaloneMongoSplitter.class);
-//        MongoConfigUtil.setOutputURI(conf, mongoURI + "/guangmingNews.word");
+        MongoConfigUtil.setOutputURI(conf, "mongodb://" + mongoHost + "/guangmingNews.word");
         Job job = Job.getInstance(conf, "wordcount");
         job.setJarByClass(Main.class);
         // map设置
@@ -38,11 +37,10 @@ public class Main {
         // reduce设置
         job.setReducerClass(HyperIndexReducer.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(Document.class);
         // 输入输出设置
         job.setInputFormatClass(MongoInputFormat.class);
-//        job.setOutputFormatClass(MongoOutputFormat.class);
-        FileOutputFormat.setOutputPath(job, new Path("output"));
+        job.setOutputFormatClass(MongoOutputFormat.class);
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
