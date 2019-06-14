@@ -26,7 +26,7 @@ public class Main {
         fin.close();
 
         Configuration conf = new Configuration();
-        MongoConfigUtil.setInputURI(conf, "mongodb://" + mongoHost + "/guangmingNews.gmw");
+        MongoConfigUtil.setInputURI(conf, "mongodb://" + mongoHost + "/guangmingNews.guangmingnews");
         MongoConfigUtil.setSplitterClass(conf, StandaloneMongoSplitter.class);
         MongoConfigUtil.setOutputURI(conf, "mongodb://" + mongoHost + "/guangmingNews.word");
         Job job = Job.getInstance(conf, "wordcount");
@@ -34,6 +34,8 @@ public class Main {
         // map设置
         job.setMapperClass(HyperIndexMapper.class);
         job.setMapOutputValueClass(MapWritable.class);
+        // combiner设置
+        job.setCombinerClass(HyperIndexCombiner.class);
         // reduce设置
         job.setReducerClass(HyperIndexReducer.class);
         job.setOutputKeyClass(Text.class);
